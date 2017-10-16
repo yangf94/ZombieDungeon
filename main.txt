@@ -1,0 +1,1441 @@
+var sketchProc=function(processingInstance){ with (processingInstance){
+size(400, 400); 
+frameRate(60);
+
+//b18_19117575
+
+angleMode = "radians";
+
+var debugging = false;
+
+var mainCharacterModel = 0;
+var x = 50;
+var y = 50;
+
+var gameOver = false;
+
+var Direction = {FORWARD:0,BACKWARDS:1,LEFT:2,RIGHT:3};
+
+var Wall = function(x, y, width, height){
+	this.x = x;
+	this.y = y;
+	this.width = width;
+	this.height = height;
+};
+var Exit = function(x, y, width, height){
+	this.x = x;
+	this.y = y;
+	this.width = width;
+	this.height = height;
+};
+
+var TileMap = function(gameObj){
+	this.layer1 =  ["wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww",
+					"wwwwwwwwwwwwwwwwwwww"];
+	this.walls = [];
+	this.tiles = [];
+	this.exit = null;
+	
+	this.tileWidth = 64;
+	this.tileHeight = 64;
+	this.width = this.tileWidth*this.layer1[0].length;
+	this.height = this.tileHeight*this.layer1.length;
+	this.tWidth = this.layer1[0].length;
+	this.tHeight = this.layer1.length;
+	
+	this.generate(gameObj);
+	//console.log(gameObj);
+	
+	for(var j=0;j<this.tHeight;j++){
+		for(var i=0;i<this.tWidth;i++){
+			if(this.layer1[j][i]=="w"){
+				this.walls.push(new Wall(i*this.tileWidth, j*this.tileHeight, this.tileWidth, this.tileHeight));
+			}else{
+				this.walls.push(null);
+			}
+			if(this.layer1[j][i]=="e"){
+				this.exit = new Exit(i*this.tileWidth, j*this.tileHeight, this.tileWidth, this.tileHeight);
+			}
+		}
+	}
+};
+TileMap.loadTiles = function(){
+	this.cementTile1 = loadImage("assets/PNG/Tiles/tile_07.png");
+	this.cementTile2 = loadImage("assets/PNG/Tiles/tile_08.png");
+	this.brickTile = loadImage("assets/PNG/bricks.png");
+	this.exitTile = loadImage("assets/PNG/stairs.png");
+};
+TileMap.prototype.generate = function(gameObj){
+	var x = floor(random(1,this.tWidth-1));
+	var y = floor(random(1,this.tHeight-1));
+	var px = x;
+	var py = y;
+	
+	gameObj.player.x = x*this.tileWidth + this.tileWidth/2;
+	gameObj.player.y = y*this.tileHeight + this.tileHeight/2;
+	
+	for(var j=0;j<this.tHeight;j++){
+		for(var i=0;i<this.tWidth;i++){
+			this.layer1[j][i] = 'w';
+		}
+	}
+	var r = floor(random(2));
+	if(r===0){
+		this.layer1[y] = this.layer1[y].substr(0, x) + '1' + this.layer1[y].substr(x+1);
+	}else{
+		this.layer1[y] = this.layer1[y].substr(0, x) + '2' + this.layer1[y].substr(x+1);
+	}
+	
+	var count = 0;
+	var emptyLocs = [];
+	var NORTH = 0;
+	var WEST = 1;
+	var SOUTH = 2;
+	var EAST = 3;
+	var dir = -1;
+	var totalTiles = 40+gameObj.levelNum*10;
+	while(count<totalTiles){
+		var possible = [];
+		if(x>1){
+			possible.push([x-1, y]);
+		}
+		if(x<this.tWidth-2){
+			possible.push([x+1, y]);
+		}
+		if(y>1){
+			possible.push([x, y-1]);
+		}
+		if(y<this.tWidth-2){
+			possible.push([x, y+1]);
+		}
+		var loc = possible[floor(random(possible.length))];
+		
+		if(dir!=-1){
+			for(var i=0;i<4;i++){
+				var temp;
+				if(loc[0]<x){
+					temp = WEST;
+				}else if(loc[0]>x){
+					temp = EAST;
+				}else if(loc[1]<y){
+					temp = NORTH;
+				}else if(loc[1]>y){
+					temp = SOUTH;
+				}
+				if(temp==dir){
+					break;
+				}
+				loc = possible[floor(random(possible.length))];
+			}
+			dir = temp;
+		}else{
+			if(loc[0]<x){
+				dir = WEST;
+			}else if(loc[0]>x){
+				dir = EAST;
+			}else if(loc[1]<y){
+				dir = NORTH;
+			}else if(loc[1]>y){
+				dir = SOUTH;
+			}
+		}
+		x = loc[0];
+		y = loc[1];
+		if(this.layer1[y][x] === 'w'){
+			var r = floor(random(2));
+			if(r===0){
+				this.layer1[y] = this.layer1[y].substr(0, x) + '1' + this.layer1[y].substr(x+1);
+			}else{
+				this.layer1[y] = this.layer1[y].substr(0, x) + '2' + this.layer1[y].substr(x+1);
+			}
+			emptyLocs.push([x,y]);
+			count++;
+		}
+	}
+	var totalZombies = 3+gameObj.levelNum*1.5;
+	for(var i=0;i<totalZombies;i++){
+		var index = floor(random(emptyLocs.length));
+		var x = emptyLocs[index][0]*this.tileWidth + this.tileWidth/2;
+		var y = emptyLocs[index][1]*this.tileHeight + this.tileHeight/2;
+		gameObj.zombies.push(new Zombie(x,y,0,gameObj.levelNum));
+		emptyLocs.splice(index,1);
+	}
+	var connect = 5;
+	var lastX = -1;
+	var lastY = -1;
+	var placed = false;
+	for(var i=0;i<200;i++){
+		var index = floor(random(emptyLocs.length));
+		var x = emptyLocs[index][0];
+		var y = emptyLocs[index][1];
+		var total = 0;
+		if(this.layer1[y][x-1]!=='w'){
+			total++;
+		}
+		if(this.layer1[y][x+1]!=='w'){
+			total++;
+		}
+		if(this.layer1[y-1][x]!=='w'){
+			total++;
+		}
+		if(this.layer1[y+1][x]!=='w'){
+			total++;
+		}
+		
+		if(total<connect){
+			var sum = abs(px-x) + abs(py-y);
+			if(sum>=totalTiles/8){
+				connect = total;
+				if(connect<=1){
+					this.layer1[y] = this.layer1[y].substr(0, x) + 'e' + this.layer1[y].substr(x+1);
+					emptyLocs.splice(index,1);
+					placed = true;
+					break;
+				}
+				lastX = x;
+				lastY = y;
+			}
+		}
+	}
+	if(!placed){
+		if(connect<5){
+			this.layer1[lastY] = this.layer1[lastY].substr(0, lastX) + 'e' + this.layer1[lastY].substr(lastX+1);
+			emptyLocs.splice(index,1);
+		}else{
+			var index = floor(random(emptyLocs.length));
+			var x = emptyLocs[index][0];
+			var y = emptyLocs[index][1];
+			this.layer1[y] = this.layer1[y].substr(0, x) + 'e' + this.layer1[y].substr(x+1);
+		}
+	}
+}
+TileMap.prototype.draw = function(sx,sy){
+	var xStartIndex = Math.floor(sx/this.tileWidth);
+	var xEndIndex = Math.ceil((sx+width)/this.tileWidth);
+	var yStartIndex = Math.floor(sy/this.tileHeight);
+	var yEndIndex = Math.ceil((sy+height)/this.tileHeight);
+	
+	for(var i=xStartIndex;i<xEndIndex;i++){
+		for(var j=yStartIndex;j<yEndIndex;j++){
+			var x = i*this.tileWidth-sx;
+			var y = j*this.tileHeight-sy;
+			if(this.layer1[j][i]=="1"){
+				image(TileMap.cementTile1, x, y);
+			}
+			else if(this.layer1[j][i]=="2"){
+				image(TileMap.cementTile2, x, y);
+			}
+			else if(this.layer1[j][i]=="w"){
+				image(TileMap.brickTile, x, y);
+			}
+			else if(this.layer1[j][i]=="e"){
+				image(TileMap.exitTile, x, y);
+			}
+		}
+	}
+};
+var Bullet = function(x,y,dx,dy){
+	this.x1 = x;
+	this.y1 = y;
+	this.x2 = x;
+	this.y2 = y;
+	this.dx = dx;
+	this.dy = dy;
+	this.count = 0;
+	this.hit = false;
+};
+Bullet.prototype.update = function(gameObj){
+	if(this.count<2){
+		this.count++;
+		this.x2+=this.dx;
+		this.y2+=this.dy;
+	}else{
+		this.x2+=this.dx;
+		this.y2+=this.dy;
+		this.x1+=this.dx;
+		this.y1+=this.dy;
+	}
+	//this.checkCollision(gameObj.tilemap);
+};
+Bullet.prototype.checkCollisionWithWall = function(wall){
+	if(this.x2>wall.x&&this.x2<wall.x+wall.width){
+		if(this.y2>wall.y&&this.y2<wall.y+wall.width){
+			return true;
+		}
+	}
+};
+Bullet.prototype.checkCollision = function(tilemap){
+	for(var i=0;i<tilemap.tWidth;i++){
+		for(var j=0;j<tilemap.tHeight;j++){
+			if(tilemap.walls[i+j*tilemap.tWidth]!==null){
+				if(this.checkCollisionWithWall(tilemap.walls[i+j*tilemap.tWidth])){
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+};
+Bullet.prototype.draw = function(sx,sy){
+	stroke(255,255,30);
+	strokeWeight(2);
+	line(this.x2-sx,this.y2-sy,this.x1-sx,this.y1-sy);
+};
+var Handgun = function(){
+	this.cooldownTime = 30;
+	this.cooldownCount = 0;
+	this.bullets = [];
+	this.type = "handgun";
+	this.accuracy = 0.08;
+	this.damage = 50;
+};
+Handgun.prototype.update = function(gameObj){
+	for(var i = 0;i<this.bullets.length;i++){
+		this.bullets[i].update(gameObj);
+	}
+	/*var i = 0;
+	while(i<this.bullets.length){
+		if(this.bullets[i].x1<0||this.bullets[i].x1>gameObj.tilemap.width){
+			
+			this.bullets.splice(i,1);
+				
+			continue;
+		}
+		if(this.bullets[i].y1<0||this.bullets[i].y1>gameObj.tilemap.height){
+			this.bullets.splice(i,1);
+				
+			continue;
+		}
+		if(this.bullets[i].checkCollision(gameObj.tilemap)){
+			this.bullets.splice(i,1);
+				
+			continue;
+		}
+		i++;
+	}*/
+	var i = 0;
+	while(i<this.bullets.length){
+		if(this.bullets[i].hit){
+			this.bullets.splice(i,1);
+			continue;
+		}
+		i++;
+	}
+	for(var i=0;i<this.bullets.length;i++){
+		if(this.bullets[i].x1<0||this.bullets[i].x1>gameObj.tilemap.width){
+			this.bullets[i].hit = true;
+		}
+		if(this.bullets[i].y1<0||this.bullets[i].y1>gameObj.tilemap.height){
+			this.bullets[i].hit = true;
+		}
+		if(this.bullets[i].checkCollision(gameObj.tilemap)){
+			this.bullets[i].hit = true;
+		}
+	}
+	if(this.cooldownCount>0){
+		this.cooldownCount--;
+	}
+};
+Handgun.prototype.draw = function(sx,sy){
+	for(var i = 0;i<this.bullets.length;i++){
+		this.bullets[i].draw(sx,sy);
+	}
+};
+Handgun.prototype.fire = function(angle,cx,cy){
+	var error = random(2*this.accuracy)-this.accuracy;
+	var newError = random(2*this.accuracy)-this.accuracy;
+	if(abs(newError)>abs(error)){
+		error = newError;
+	}
+	newError = random(2*this.accuracy)-this.accuracy;
+	if(abs(newError)>abs(error)){
+		error = newError;
+	}
+	if(this.cooldownCount<=0){
+		var x = cx+30*cos(angle+0.35);
+		var y = cy+30*sin(angle+0.35);
+		this.bullets.push(new Bullet(x,y,20*cos(angle+error),20*sin(angle+error)));
+		this.cooldownCount = this.cooldownTime;
+	}
+};
+var Human = function(x,y,model){
+	this.x = x;
+	this.y = y;
+	this.dx = 0;
+	this.dy = 0;
+	this.model = model;
+	this.weapon = null;
+	
+	this.index = 0;
+	this.prescale = 10;
+	this.counter = 0;
+	
+	//this.moving = false;
+	
+	this.radius = 18;
+	this.angle = 0;
+	
+	this.speed = 3;
+	
+	this.direction = null;
+	this.moving = false;
+	
+	this.maxHealth = 3;
+	this.health = this.maxHealth;
+	
+	this.iFrames = 0;
+};
+Human.loadImage = function(){
+	this.human_idle = [];
+	this.human_idle.push(loadImage("assets/PNG/Man Brown/manBrown_stand.png"));
+	this.human_idle.push(loadImage("assets/PNG/Man Brown/manBrown_stand2.png"));
+	this.human_idle.push(loadImage("assets/PNG/Man Brown/manBrown_stand3.png"));
+	this.human_idle.push(loadImage("assets/PNG/Man Brown/manBrown_stand2.png"));
+	this.human_idle.push(loadImage("assets/PNG/Man Brown/manBrown_stand.png"));
+	this.human_idle.push(loadImage("assets/PNG/Man Brown/manBrown_stand4.png"));
+	this.human_idle.push(loadImage("assets/PNG/Man Brown/manBrown_stand5.png"));
+	this.human_idle.push(loadImage("assets/PNG/Man Brown/manBrown_stand4.png"));
+	
+	this.human_gun = [];
+	this.human_gun.push(loadImage("assets/PNG/Man Brown/manBrown_gun.png"));
+	this.human_gun.push(loadImage("assets/PNG/Man Brown/manBrown_gun2.png"));
+	this.human_gun.push(loadImage("assets/PNG/Man Brown/manBrown_gun3.png"));
+	this.human_gun.push(loadImage("assets/PNG/Man Brown/manBrown_gun2.png"));
+	this.human_gun.push(loadImage("assets/PNG/Man Brown/manBrown_gun.png"));
+	this.human_gun.push(loadImage("assets/PNG/Man Brown/manBrown_gun4.png"));
+	this.human_gun.push(loadImage("assets/PNG/Man Brown/manBrown_gun5.png"));
+	this.human_gun.push(loadImage("assets/PNG/Man Brown/manBrown_gun4.png"));
+};
+Human.prototype.checkCollisionWithWall = function(wall){
+	var closestX = 0;
+    var closestY = 0;
+	if(this.x < wall.x){
+		closestX = wall.x;
+	}else if(this.x > wall.x + wall.width){
+		closestX = wall.x + wall.width;
+	}else{
+		closestX = this.x;
+	}
+	if(this.y < wall.y){
+		closestY = wall.y;
+	}else if(this.y > wall.y + wall.height){
+		closestY = wall.y + wall.height;
+	}else{
+		closestY = this.y;
+	}
+	var temp = new PVector(this.x-closestX, this.y-closestY);
+	if(temp.magSq()<this.radius*this.radius){
+		temp.normalize();
+		temp.mult(this.radius);
+		this.x = closestX + temp.x;
+		this.y = closestY + temp.y;
+	}
+};
+Human.prototype.checkCollision = function(tilemap, sx, sy){
+	var xStartIndex = Math.floor(sx/tilemap.tileWidth);
+	var xEndIndex = Math.ceil((sx+width)/tilemap.tileWidth);
+	var yStartIndex = Math.floor(sy/tilemap.tileHeight);
+	var yEndIndex = Math.ceil((sy+height)/tilemap.tileHeight);
+	for(var i=xStartIndex;i<xEndIndex;i++){
+		for(var j=yStartIndex;j<yEndIndex;j++){
+			if(tilemap.walls[i+j*tilemap.tWidth]!==null){
+				this.checkCollisionWithWall(tilemap.walls[i+j*tilemap.tWidth]);
+			}
+		}
+	}
+};
+Human.prototype.changeFacing = function(sx,sy){
+	var dx = mouseX + sx - this.x;
+	var dy = mouseY + sy - this.y;
+	if(dx!==0 || dy!==0){
+		this.angle = atan2(dy,dx);
+	}
+};
+Human.prototype.update = function(gameObj){
+	if(this.weapon!==null){
+		this.weapon.update(gameObj);
+	}
+	//if(this.moving){
+		/*switch(this.direction){
+			case Direction.FORWARD:
+				//this.x += this.speed*cos(this.angle);
+				//this.y += this.speed*sin(this.angle);
+				this.y -= this.speed;
+			break;
+			case Direction.LEFT:
+				//this.x += this.speed*cos(this.angle-PI/2);
+				//this.y += this.speed*sin(this.angle-PI/2);
+				this.x -= this.speed;
+			break;
+			case Direction.RIGHT:
+				//this.x += this.speed*cos(this.angle+PI/2);
+				//this.y += this.speed*sin(this.angle+PI/2);
+				this.x += this.speed;
+			break;
+			case Direction.BACKWARDS:
+				//this.x += this.speed*cos(this.angle-PI);
+				//this.y += this.speed*sin(this.angle-PI);
+				this.y += this.speed;
+			break;
+		}*/
+		this.x += this.dx;
+		this.y += this.dy;
+		if(this.x<this.radius){
+			this.x = this.radius;
+		}else if(this.x+this.radius>gameObj.tilemap.width){
+			this.x = gameObj.tilemap.width-this.radius;
+		}
+		if(this.y<this.radius){
+			this.y = this.radius;
+		}else if(this.y+this.radius>gameObj.tilemap.height){
+			this.y = gameObj.tilemap.height-this.radius;
+		}
+		this.checkCollision(gameObj.tilemap, gameObj.sx, gameObj.sy);
+		if(this.iFrames>0){
+			this.iFrames--;
+		}
+	//}
+	//console.log(this.bullets.length);
+};
+Human.prototype.draw = function(sx,sy){
+	if(this.weapon!==null){
+		this.weapon.draw(sx,sy);
+	}
+	pushMatrix();
+	translate(this.x-sx, this.y-sy);
+	rotate(this.angle);
+	translate(-this.radius,-this.radius-4);
+	if(this.weapon===null){
+		if(this.moving){
+		//if(this.dx!==0||this.dy!==0){
+			image(Human.human_idle[this.index],0,0);
+			this.counter++;
+			if(this.counter>=this.prescale){
+				this.index++;
+				if(this.index>=Human.human_idle.length){
+					this.index = 0;
+				}
+				this.counter = 0;
+			}
+		}else{
+			image(Human.human_idle[0],0,0);
+			this.counter = 0;
+			this.index = 0;
+		}
+	}
+	else if(this.weapon.type==="handgun"){
+		//if(this.dx!==0||this.dy!==0){
+		if(this.moving){
+			image(Human.human_gun[this.index],0,0);
+			this.counter++;
+			if(this.counter>=this.prescale){
+				this.index++;
+				if(this.index>=Human.human_gun.length){
+					this.index = 0;
+				}
+				this.counter = 0;
+			}
+		}else{
+			image(Human.human_gun[0],0,0);
+			this.counter = 0;
+			this.index = 0;
+		}
+	}
+	popMatrix();
+	if(debugging){
+		noFill();
+		stroke(0,0,0);
+		ellipse(this.x-sx,this.y-sy,this.radius*2,this.radius*2);
+	}
+};
+Human.prototype.mousePressed = function(gameObj){
+	if(this.weapon !== null){
+		this.weapon.fire(this.angle,this.x,this.y);
+	}
+};
+var Zombie = function(x,y,state, scale){
+	this.x = x;
+	this.y = y;
+	
+	this.state = state;
+	this.index = 0;
+	this.prescale = 10;
+	this.counter = 0;
+	
+	this.radius = 18;
+	this.angle = 0;
+	this.speed = 0.6 + scale*0.08;
+	this.turnSpeed = 0.03 + scale*0.005;
+	
+	this.state = 0;
+	
+	this.wanderDist = 0;
+	this.wanderAngle = 0;
+	this.turnDir = -1;
+	this.turnCount = 0;
+	
+	this.stun = 0;
+	
+	this.health = 30+20*scale;
+	this.dead = false;
+	
+	this.explosionRadius = 2;
+	
+	this.reactDir = 0;
+};
+Zombie.WANDER_STATE = 0;
+Zombie.CHASE_STATE = 1;
+Zombie.TURN_LEFT_STATE = 2;
+Zombie.TURN_RIGHT_STATE = 3;
+Zombie.EXPLOSION_STATE = 4;
+Zombie.REACT_STATE = 5;
+Zombie.loadImage = function(){
+	this.zombie_animation = [];
+	this.zombie_animation.push(loadImage("assets/PNG/Zombie 1/zoimbie1_hold.png"));
+	this.zombie_animation.push(loadImage("assets/PNG/Zombie 1/zoimbie1_hold2.png"));
+	this.zombie_animation.push(loadImage("assets/PNG/Zombie 1/zoimbie1_hold3.png"));
+	this.zombie_animation.push(loadImage("assets/PNG/Zombie 1/zoimbie1_hold2.png"));
+	this.zombie_animation.push(loadImage("assets/PNG/Zombie 1/zoimbie1_hold.png"));
+	this.zombie_animation.push(loadImage("assets/PNG/Zombie 1/zoimbie1_hold4.png"));
+	this.zombie_animation.push(loadImage("assets/PNG/Zombie 1/zoimbie1_hold5.png"));
+	this.zombie_animation.push(loadImage("assets/PNG/Zombie 1/zoimbie1_hold4.png"));
+};
+Zombie.prototype.canSeePlayer = function(gameObj){
+	var dx = gameObj.player.x-this.x;
+	var dy = gameObj.player.y-this.y;
+	var a = atan2(dy,dx);
+	
+	if(abs(this.angle-a)%(2*PI)<=PI/3 && dx*dx+dy*dy<40000){
+		if(this.computeWhisker(gameObj, a)>dx*dx+dy*dy){
+			return true;
+		}
+	}
+	return false;
+};
+Zombie.prototype.checkBulletCollision = function(weapon){
+	if(weapon===null){
+		return;
+	}
+	var bullets = weapon.bullets;
+	var i = 0;
+	while(i<bullets.length){
+		var dx = bullets[i].x1-this.x;
+		var dy = bullets[i].y1-this.y;
+		if(dx*dx+dy*dy<this.radius*this.radius){
+			this.x += bullets[i].dx/2;
+			this.y += bullets[i].dy/2;
+			this.stun = 10;
+			this.health -= weapon.damage;
+			if(this.state === Zombie.WANDER_STATE || this.state === Zombie.TURN_LEFT_STATE || this.state === Zombie.TURN_RIGHT_STATE || this.state === Zombie.REACT_STATE){
+				this.state = Zombie.REACT_STATE;
+				this.reactDir = atan2(-bullets[i].dy,-bullets[i].dx);
+			}
+			bullets.splice(i,1);
+			continue;
+		}
+		i++;
+	}
+};
+Zombie.prototype.checkCollisionWithWall = function(wall){
+	var closestX = 0;
+    var closestY = 0;
+	if(this.x < wall.x){
+		closestX = wall.x;
+	}else if(this.x > wall.x + wall.width){
+		closestX = wall.x + wall.width;
+	}else{
+		closestX = this.x;
+	}
+	if(this.y < wall.y){
+		closestY = wall.y;
+	}else if(this.y > wall.y + wall.height){
+		closestY = wall.y + wall.height;
+	}else{
+		closestY = this.y;
+	}
+	var temp = new PVector(this.x-closestX, this.y-closestY);
+	if(temp.magSq()<this.radius*this.radius){
+		temp.normalize();
+		temp.mult(this.radius);
+		this.x = closestX + temp.x;
+		this.y = closestY + temp.y;
+	}
+};
+Zombie.prototype.checkCollision = function(tilemap){
+	var xStartIndex = Math.floor((this.x-this.radius)/tilemap.tileWidth);
+	var xEndIndex = Math.ceil((this.x+this.radius)/tilemap.tileWidth);
+	var yStartIndex = Math.floor((this.y-this.radius)/tilemap.tileHeight);
+	var yEndIndex = Math.ceil((this.y+this.radius)/tilemap.tileHeight);
+	for(var i=xStartIndex;i<xEndIndex;i++){
+		for(var j=yStartIndex;j<yEndIndex;j++){
+			if(tilemap.walls[i+j*tilemap.tWidth]!==null){
+				this.checkCollisionWithWall(tilemap.walls[i+j*tilemap.tWidth]);
+			}
+		}
+	}
+};
+Zombie.prototype.computeWhiskerWithWall = function(wall, A, B, C){
+	var dist = -1;
+	var x, y;
+	if(B!=0){
+		x = wall.x;
+		y = (C-A*x)/B;
+		var temp = new PVector(x - this.x, y - this.y);
+		if(temp.x/B > 0){
+			if(y>wall.y && y<wall.y+wall.height){
+				dist = temp.magSq();
+			}
+		}
+		x = wall.x+wall.width;
+		y = (C-A*x)/B;
+		temp = new PVector(x - this.x, y - this.y);
+		var d = temp.magSq();
+		if(d<dist || dist==-1){
+			if(temp.x/B > 0){
+				if(y>wall.y && y<wall.y+wall.height){
+					dist = d;
+				}
+			}
+		}
+	}
+	if(A!=0){
+		y = wall.y;
+		x = (C-B*y)/A;
+		var temp = new PVector(x - this.x, y - this.y);
+		var d = temp.magSq();
+		if(d<dist || dist==-1){
+			if(temp.y/A < 0){
+				if(x>wall.x && x<wall.x+wall.width){
+					dist = d;
+				}
+			}
+		}
+		y = wall.y + wall.height;
+		x = (C-B*y)/A;
+		temp = new PVector(x - this.x, y - this.y);
+		d = temp.magSq();
+		if(d<dist || dist==-1){
+			if(temp.y/A < 0){
+				if(x>wall.x && x<wall.x+wall.width){
+					dist = d;
+				}
+			}
+		}
+	}
+	return dist;
+};
+Zombie.prototype.computeWhisker = function(gameObj, angle){
+	var A = -sin(angle);
+	var B = cos(angle);
+	var C = A*this.x+B*this.y;
+	
+	var dist = -1;
+	var x, y;
+	if(B!=0){
+		x = 0;
+		y = C/B;
+		var temp = new PVector(x - this.x, y - this.y);
+		if(temp.x/B > 0){
+			dist = temp.magSq();
+		}
+		x = gameObj.tilemap.width;
+		y = (C-A*x)/B;
+		temp = new PVector(x - this.x, y - this.y);
+		var d = temp.magSq();
+		if(d<dist || dist==-1){
+			if(temp.x/B > 0){
+				dist = d;
+			}
+		}
+	}
+	if(A!=0){
+		x = C/A;
+		y = 0;
+		var temp = new PVector(x - this.x, y - this.y);
+		var d = temp.magSq();
+		if(d<dist || dist==-1){
+			if(temp.y/A < 0){
+				dist = d;
+			}
+		}
+		y = gameObj.tilemap.height;
+		x = (C-B*y)/A;
+		temp = new PVector(x - this.x, y - this.y);
+		d = temp.magSq();
+		if(d<dist || dist==-1){
+			if(temp.y/A < 0){
+				dist = d;
+			}
+		}
+	}
+	for(var i=0;i<gameObj.tilemap.walls.length;i++){
+		var wall = gameObj.tilemap.walls[i];
+		if(wall!==null){
+			var d = this.computeWhiskerWithWall(wall, A, B, C);
+			if(d<dist && d!==-1){
+				dist = d;
+			}
+		}
+	}
+	return dist;
+};
+Zombie.prototype.gotPlayer = function(player){
+	var dx = player.x-this.x;
+	var dy = player.y-this.y;
+	if(dx*dx+dy*dy<(this.radius+player.radius-10)*(this.radius+player.radius-10)){
+		return true;
+	}
+};
+Zombie.prototype.pushPlayer = function(player){
+	var temp = new PVector(player.x-this.x, player.y-this.y);
+	temp.normalize();
+	temp.mult(player.radius+this.radius);
+	player.x = this.x+temp.x;
+	player.y = this.y+temp.y;
+};
+Zombie.prototype.checkCollisionWithZombie = function(zombie){
+	var temp = new PVector(this.x - zombie.x,this.y - zombie.y);
+	if(abs(temp.x)<this.radius+zombie.radius&&abs(temp.y)<this.radius+zombie.radius){
+		if(temp.magSq()<(this.radius+zombie.radius)*(this.radius+zombie.radius)){
+			temp.normalize();
+			temp.mult(this.radius+zombie.radius);
+			this.x = zombie.x + temp.x;
+			this.y = zombie.y + temp.y;
+			return true;
+		}
+	}
+	return false;
+};
+Zombie.prototype.update = function(gameObj){
+	while(this.angle>PI){
+		this.angle -= (2*PI);
+	}
+	while(this.angle<-PI){
+		this.angle += (2*PI);
+	}
+	if(this.stun<=0){
+		switch(this.state){
+			case Zombie.WANDER_STATE:
+				if(this.wanderDist<=0){
+					this.wanderDist = random(30,100);
+					this.wanderAngle = random(PI/6);
+					
+					var left = this.computeWhisker(gameObj, this.angle-PI/4);
+					var right = this.computeWhisker(gameObj, this.angle+PI/4);
+					if(left<4096 && right>4096){
+						this.turnDir = Direction.RIGHT;
+					}
+					else if(right<4096 && left>4096){
+						this.turnDir = Direction.LEFT;
+					}
+					else{
+						var t = Math.floor(random(2));
+						if(t===0){
+							this.turnDir = Direction.LEFT;
+						}else{
+							this.turnDir = Direction.RIGHT;
+						}
+					}
+				}else{
+					if(this.wanderAngle>0){
+						if(this.turnDir === Direction.LEFT){
+							this.angle -= this.turnSpeed;
+							this.wanderAngle -= this.turnSpeed;
+						}
+						else if(this.turnDir === Direction.RIGHT){
+							this.angle += this.turnSpeed;
+							this.wanderAngle -= this.turnSpeed;
+						}else{
+						
+						}
+					}
+					else{
+						this.x += this.speed*cos(this.angle);
+						this.y += this.speed*sin(this.angle);
+						this.wanderDist--;
+					}
+				}
+				if(this.canSeePlayer(gameObj)){
+					this.state = Zombie.CHASE_STATE;
+				}
+				var center = this.computeWhisker(gameObj, this.angle);
+				//println(sqrt(center));
+				if(center<6400){
+					this.turnCount = 5;
+					var left = this.computeWhisker(gameObj, this.angle-PI/4);
+					var right = this.computeWhisker(gameObj, this.angle+PI/4);
+					if(left>right){
+						this.state = Zombie.TURN_LEFT_STATE;
+					}else{
+						this.state = Zombie.TURN_RIGHT_STATE;
+					}
+				}
+			break;
+			case Zombie.CHASE_STATE:
+				var dx = gameObj.player.x-this.x;
+				var dy = gameObj.player.y-this.y;
+				var a = atan2(dy,dx);
+				
+				var diff = a-this.angle;
+				if(diff>PI){
+					diff -= 2*PI;
+				}else if(diff<-PI){
+					diff += PI;
+				}
+				
+				if(diff<-this.turnSpeed){
+					this.angle-=this.turnSpeed;
+				}else if(diff>this.turnSpeed){
+					this.angle+=this.turnSpeed;
+				}
+				
+				this.x += this.speed*cos(this.angle);
+				this.y += this.speed*sin(this.angle);
+				
+				if(!this.canSeePlayer(gameObj)){
+					this.state = Zombie.WANDER_STATE;
+				}
+			break;
+			case Zombie.TURN_LEFT_STATE:
+				//println("Turn Left");
+				this.angle -= this.turnSpeed;
+				if(this.turnCount>0){
+					this.turnCount--;
+				}else{
+					var center = this.computeWhisker(gameObj, this.angle);
+					if(center>10000){
+						this.wanderDist = random(30,100);
+						this.state = Zombie.WANDER_STATE;
+					}
+				}
+				if(this.canSeePlayer(gameObj)){
+					this.state = Zombie.CHASE_STATE;
+				}
+			break;
+			case Zombie.TURN_RIGHT_STATE:
+				//println("Turn Right");
+				this.angle += this.turnSpeed;
+				if(this.turnCount>0){
+					this.turnCount--;
+				}else{
+					var center = this.computeWhisker(gameObj, this.angle);
+					if(center>10000){
+						this.wanderDist = random(30,100);
+						this.state = Zombie.WANDER_STATE;
+					}
+				}
+				if(this.canSeePlayer(gameObj)){
+					this.state = Zombie.CHASE_STATE;
+				}
+			break;
+			case Zombie.REACT_STATE:
+				//println(this.reactDir);
+				var diff = this.reactDir-this.angle;
+				var reached = false;
+				if(diff>PI){
+					diff -= 2*PI;
+				}else if(diff<-PI){
+					diff += 2*PI;
+				}
+				if(diff<-this.turnSpeed){
+					this.angle-=this.turnSpeed;
+				}else if(diff>this.turnSpeed){
+					this.angle+=this.turnSpeed;
+				}else{
+					reached = true;
+				}
+				if(this.canSeePlayer(gameObj)){
+					this.state = Zombie.CHASE_STATE;
+				}else if(reached){
+					this.state = Zombie.WANDER_STATE;
+				}
+			break;
+		}
+	}else{
+		this.stun--;
+	}
+	if(this.state === Zombie.EXPLOSION_STATE){
+		this.explosionRadius+=1.5;
+		if(this.explosionRadius>30){
+			this.dead = true;
+		}
+	}
+	this.checkCollision(gameObj.tilemap);
+	this.checkBulletCollision(gameObj.player.weapon);
+	if(this.health<=0){
+		this.state = Zombie.EXPLOSION_STATE;
+	}
+	
+	if(gameObj.player.iFrames<=0){
+		if(this.gotPlayer(gameObj.player)){
+			if(this.state!==Zombie.EXPLOSION_STATE){
+				this.pushPlayer(gameObj.player);
+				gameObj.player.health--;
+				gameObj.player.iFrames = 30;
+				if(gameObj.player.health<=0){
+					gameOver = true;
+				}
+			}
+		}
+	}
+	if(this.x<this.radius){
+		this.x = this.radius;
+	}else if(this.x+this.radius>gameObj.tilemap.width){
+		this.x = gameObj.tilemap.width-this.radius;
+	}
+	if(this.y<this.radius){
+		this.y = this.radius;
+	}else if(this.y+this.radius>gameObj.tilemap.height){
+		this.y = gameObj.tilemap.height-this.radius;
+	}
+};
+Zombie.prototype.draw = function(sx,sy){
+	pushMatrix();
+	translate(this.x-sx, this.y-sy);
+	rotate(this.angle);
+	translate(-this.radius,-this.radius-4);
+	if(this.state !== Zombie.EXPLOSION_STATE){
+		if(this.stun<=0){
+			image(Zombie.zombie_animation[this.index],0,0);
+			this.counter++;
+			if(this.counter>=this.prescale){
+				this.index++;
+				if(this.index>=Zombie.zombie_animation.length){
+					this.index = 0;
+				}
+				this.counter = 0;
+			}
+		}else{
+			image(Zombie.zombie_animation[0],0,0);
+			this.counter = 0;
+			this.index = 0;
+		}
+	}else{
+		stroke(132,7,7);
+		strokeWeight(3);
+		noFill();
+		ellipse(this.radius-5,this.radius-5,this.explosionRadius*2,this.explosionRadius*2);
+		
+	}
+	popMatrix();
+	if(debugging){
+		noFill();
+		stroke(0,0,0);
+		ellipse(this.x-sx,this.y-sy,this.radius*2,this.radius*2);
+	}
+};
+var HUDDisplay = function(){
+	this.msg = -1;
+};
+HUDDisplay.EXIT_MSG = 0;
+HUDDisplay.loadImages = function(){
+	this.heartImg = loadImage("assets/PNG/heart.png");
+};
+HUDDisplay.prototype.update = function(gameObj){
+	this.msg = -1;
+	if(gameObj.player.x>gameObj.tilemap.exit.x&&gameObj.player.x<gameObj.tilemap.exit.x+gameObj.tilemap.exit.width){
+		if(gameObj.player.y>gameObj.tilemap.exit.y&&gameObj.player.y<gameObj.tilemap.exit.y+gameObj.tilemap.exit.height){
+				this.msg = HUDDisplay.EXIT_MSG;
+		}
+	}
+};
+HUDDisplay.prototype.draw = function(gameObj){
+	fill(30,30,30,140);
+	noStroke();
+	rect(280,350,100,35);
+	textSize(16);
+	fill(230,230,230);
+	text("Level: "+String(gameObj.levelNum),290,370);
+	
+	if(this.msg>=0){
+		fill(30,30,30,140);
+		noStroke();
+		rect(0,280,400,35);
+		switch(this.msg){
+			case HUDDisplay.EXIT_MSG:
+				textSize(20);
+				fill(230,230,230);
+				text("Press Space to exit level",100,305);
+			break;
+		}
+	}
+	
+	for(var i=0;i<gameObj.player.health;i++){
+		image(HUDDisplay.heartImg, 10+28*i, 10);
+	}
+};
+var Game = function(state){
+    this.state = state;
+	this.sx = 0;
+	this.sy = 0;
+	this.player = new Human(x,y);
+	this.player.weapon = new Handgun();
+	
+	this.zombies = [];
+	//this.zombies.push(new Zombie(200,50));
+	//this.zombies.push(new Zombie(500,300));
+	//this.zombies.push(new Zombie(100,400));
+	
+	this.switchLevel = false;
+	this.levelNum = 1;
+	
+	this.tilemap = new TileMap(this);
+	
+	this.display = new HUDDisplay();
+};
+Game.START_STATE = function(){
+    this.initialized = false;
+	this.zombie = new Zombie(-150,150,Zombie.CHASE_STATE);
+	this.human = new Human(-50,150);
+	this.human.moving = true;
+};
+Game.MAIN_STATE = function(){
+    
+};
+Game.INSTRUCTIONS_STATE = function(){
+    
+};
+Game.CREDITS_STATE = function(){
+    
+};
+Game.GAME_WON_STATE = function(){
+    
+};
+Game.START_STATE.prototype.update = function(gameObj) {
+	if(!this.initialized){
+		Zombie.loadImage();
+		Human.loadImage();
+		TileMap.loadTiles();
+		HUDDisplay.loadImages();
+		this.initialized = true;
+	}else{
+		this.human.x += 3;
+		if(this.human.x > width+20){
+			this.human.x = -120;
+		}
+		this.zombie.x += 3;
+		if(this.zombie.x > width+20){
+			this.zombie.x = -120;
+		}
+	}
+};
+Game.MAIN_STATE.prototype.update = function(gameObj) {
+	gameObj.player.update(gameObj);
+	
+	for(var i=0;i<gameObj.zombies.length;i++){
+		for(var j=i+1;j<gameObj.zombies.length;j++){
+			gameObj.zombies[i].checkCollisionWithZombie(gameObj.zombies[j]);
+		}
+	}
+	for(var i = 0;i<gameObj.zombies.length;i++){
+		gameObj.zombies[i].update(gameObj);
+	}
+	var c = 0;
+	while(c<gameObj.zombies.length){
+		if(gameObj.zombies[c].dead){
+			gameObj.zombies.splice(c,1);
+			continue;
+		}
+		c++;
+	}
+	gameObj.display.update(gameObj);
+	if(gameObj.player.x-gameObj.sx>width-170){
+		gameObj.sx = gameObj.player.x-width+170;
+		if(gameObj.sx > gameObj.tilemap.width-width){
+            gameObj.sx = gameObj.tilemap.width-width;
+        }
+	}
+	else if(gameObj.player.x-gameObj.sx<170){
+		gameObj.sx = gameObj.player.x-170;
+		if(gameObj.sx < 0){
+            gameObj.sx = 0;
+        }
+	}
+	if(gameObj.player.y-gameObj.sy>height-170){
+		gameObj.sy = gameObj.player.y-height+170;
+		if(gameObj.sy > gameObj.tilemap.height-height){
+            gameObj.sy = gameObj.tilemap.height-height;
+        }
+	}
+	else if(gameObj.player.y-gameObj.sy<170){
+		gameObj.sy = gameObj.player.y-170;
+		if(gameObj.sy < 0){
+            gameObj.sy = 0;
+        }
+	}
+};
+Game.INSTRUCTIONS_STATE.prototype.update = function(gameObj) {
+
+};
+Game.CREDITS_STATE.prototype.update = function(gameObj) {
+
+};
+Game.GAME_WON_STATE.prototype.update = function(gameObj) {
+
+};
+Game.START_STATE.prototype.draw = function(gameObj) {
+    background(0,220,0);
+	textSize(30);
+	fill(0, 0, 0);
+	text("Zombie Dungeon", 90,50,250,50);
+	
+    textSize(16);
+	stroke(0,0,0);
+    
+    fill(230,150,0);
+    rect(150, 240, 100, 40);
+	fill(0, 0, 0);
+    text("Start", 182,250,36,50);
+	
+	fill(230,150,0);
+    rect(150, 290, 100, 40);
+	fill(0, 0, 0);
+    text("Instructions", 160,312);
+	
+	fill(230,150,0);
+    rect(150, 340, 100, 40);
+	fill(0, 0, 0);
+    text("Credits", 175,350,60,50);
+	
+	this.zombie.draw(0,0);
+	this.human.draw(0,0);
+};
+Game.MAIN_STATE.prototype.draw = function(gameObj) {
+	background(255,255,255);
+	gameObj.tilemap.draw(gameObj.sx, gameObj.sy);
+	gameObj.player.draw(gameObj.sx, gameObj.sy);
+	for(var i = 0;i<gameObj.zombies.length;i++){
+		gameObj.zombies[i].draw(gameObj.sx, gameObj.sy);
+	}
+	if(gameOver){
+		fill(255,0,0);
+		textSize(32);
+		text("Game Over", 100, 50);
+	}
+	gameObj.display.draw(gameObj);
+};
+Game.INSTRUCTIONS_STATE.prototype.draw = function(gameObj){
+	background(0,220,0);
+	textSize(24);
+	fill(150, 70, 0);
+	text("Instructions", 140,50,180,50);
+	
+	textSize(16);
+	fill(10, 10, 30);
+	text("Press WASD to move. Use the mouse to shoot. Press space bar to change level when on top of exit. Your goal is to get through the 10 levels of the dungeon in order to get out", 50,100,300,150);
+	
+	fill(255,255,255);
+	rect(300, 340, 80, 40);
+	fill(0,0,0);
+	text("Exit", 326,350,24,20);
+};
+Game.CREDITS_STATE.prototype.draw = function(gameObj) {
+	background(0,220,0);
+	
+	textSize(24);
+	fill(0, 0, 0);
+	text("Game by Yang Fei", 95,50,210,50);
+	
+	textSize(16);
+    stroke(0,0,0);
+	
+	fill(255,255,255);
+	rect(300, 340, 80, 40);
+	fill(0,0,0);
+	text("Exit", 326,350,24,20);
+};
+Game.GAME_WON_STATE.prototype.draw = function(gameObj){
+	background(0,220,0);
+	textSize(32);
+	fill(255,228,196);
+	text("You Win", 130,50);
+	
+	/*textSize(16);
+    stroke(0,0,0);
+	
+	fill(255,255,255);
+	rect(300, 340, 80, 40);
+	fill(0,0,0);
+	text("Exit", 326,350,24,20);*/
+};
+Game.START_STATE.prototype.mouseMoved = function(gameObj) {
+
+};
+Game.MAIN_STATE.prototype.mouseMoved = function(gameObj) {
+	if(!gameOver){
+		gameObj.player.changeFacing(gameObj.sx, gameObj.sy);
+	}
+};
+Game.INSTRUCTIONS_STATE.prototype.mouseMoved = function(gameObj) {
+
+};
+Game.CREDITS_STATE.prototype.mouseMoved = function(gameObj) {
+
+};
+Game.START_STATE.prototype.mousePressed = function(gameObj) {
+    //check if mouse press in button
+    if(mouseX>150 && mouseX<250){
+        if(mouseY>240 && mouseY<280){
+            //changes state
+            gameObj.state = new Game.MAIN_STATE();
+        }else if(mouseY>290 && mouseY<330){
+            //changes state
+            gameObj.state = new Game.INSTRUCTIONS_STATE();
+		}else if(mouseY>340 && mouseY<380){
+            //changes state
+            gameObj.state = new Game.CREDITS_STATE();
+		}
+    }
+};
+Game.MAIN_STATE.prototype.mousePressed = function(gameObj) {
+	gameObj.player.mousePressed(gameObj);
+};
+Game.INSTRUCTIONS_STATE.prototype.mousePressed = function(gameObj) {
+    //check if mouse press in button
+	if(mouseX>300 && mouseX<380){
+		if(mouseY>340 && mouseY<380){
+			gameObj.state = new Game.START_STATE();
+		}
+	}
+};
+Game.CREDITS_STATE.prototype.mousePressed = function(gameObj) {
+	if(mouseX>300 && mouseX<380){
+		if(mouseY>340 && mouseY<380){
+			gameObj.state = new Game.START_STATE();
+		}
+	}
+};
+Game.START_STATE.prototype.keyPressed = function(gameObj) {
+
+};
+Game.START_STATE.prototype.keyReleased = function(gameObj) {
+
+};
+Game.MAIN_STATE.prototype.keyPressed = function(gameObj) {
+	if(String(key)==="w" || String(key)==="W"){
+		//gameObj.player.direction = Direction.FORWARD;
+		gameObj.player.dy = -gameObj.player.speed;
+		//gameObj.player.moving = true;
+	}else if(String(key)==="a" || String(key)==="A"){
+		gameObj.player.dx = -gameObj.player.speed;
+		//gameObj.player.direction = Direction.LEFT;
+		//gameObj.player.moving = true;
+	}else if(String(key)==="s" || String(key)==="S"){
+		//gameObj.player.direction = Direction.BACKWARDS;
+		gameObj.player.dy = gameObj.player.speed;
+		//gameObj.player.moving = true;
+	}else if(String(key)==="d" || String(key)==="D"){
+		//gameObj.player.direction = Direction.RIGHT;
+		gameObj.player.dx = gameObj.player.speed;
+		//gameObj.player.moving = true;
+	}else if(String(key)===" "){
+		if(gameObj.player.x>gameObj.tilemap.exit.x&&gameObj.player.x<gameObj.tilemap.exit.x+gameObj.tilemap.exit.width){
+			if(gameObj.player.y>gameObj.tilemap.exit.y&&gameObj.player.y<gameObj.tilemap.exit.y+gameObj.tilemap.exit.height){
+				gameObj.switchLevel = true;
+			}
+		}
+	}
+};
+Game.MAIN_STATE.prototype.keyReleased = function(gameObj) {
+	if(String(key)==="w" || String(key)==="W"){
+		//gameObj.player.direction = null;
+		gameObj.player.dy = 0;
+		//gameObj.player.moving = false;
+	}else if(String(key)==="a" || String(key)==="A"){
+		//gameObj.player.direction = null;
+		gameObj.player.dx = 0;
+		//gameObj.player.moving = false;
+	}else if(String(key)==="s" || String(key)==="S"){
+		//gameObj.player.direction = null;
+		gameObj.player.dy = 0;
+		//gameObj.player.moving = false;
+	}else if(String(key)==="d" || String(key)==="D"){
+		//gameObj.player.direction = null;
+		gameObj.player.dx = 0;
+		//gameObj.player.moving = false;
+	}
+};
+Game.INSTRUCTIONS_STATE.prototype.keyPressed = function(gameObj) {
+
+};
+Game.INSTRUCTIONS_STATE.prototype.keyReleased = function(gameObj) {
+
+};
+Game.CREDITS_STATE.prototype.keyPressed = function(gameObj) {
+
+};
+Game.CREDITS_STATE.prototype.keyReleased = function(gameObj) {
+
+};
+Game.prototype.update = function() {
+    this.state.update(this);
+};
+Game.prototype.draw = function() {
+    this.state.draw(this);
+};
+Game.prototype.mouseMoved = function() {
+    this.state.mouseMoved(this);
+};
+Game.prototype.mousePressed = function() {
+    this.state.mousePressed(this);
+};
+Game.prototype.keyPressed = function() {
+    this.state.keyPressed(this);
+};
+Game.prototype.keyReleased = function() {
+    this.state.keyReleased(this);
+};
+Game.prototype.changeLevel = function() {
+	if(this.levelNum<10){
+		this.levelNum++;
+		this.zombies = [];
+		this.tilemap = new TileMap(this);
+	}else{
+		this.state = new Game.GAME_WON_STATE();
+	}
+};
+var game = new Game(new Game.START_STATE());
+
+//ProgramCodeGoesHere
+draw = function(){
+	if(!gameOver){
+		game.update();
+	}
+    game.draw();
+	if(game.switchLevel){
+		game.changeLevel();
+		game.switchLevel = false;
+	}
+};
+mouseMoved = function(){
+    game.mouseMoved();
+};
+mousePressed = function(){
+    game.mousePressed();
+};
+keyPressed = function(){
+    game.keyPressed();
+};
+keyReleased = function(){
+    game.keyReleased();
+};
+
+}};

@@ -1,0 +1,30 @@
+<!doctype html>
+
+<html>
+<head>
+	<title>Zombie Survival</title>
+	<style type="text/css">
+		
+		canvas{
+			padding-left: 0;
+			padding-right: 0;
+			margin-left: auto;
+			margin-right: auto;
+			display: block;
+		}
+	</style>
+</head>
+<body>
+	<canvas id="canvas">
+		
+	</canvas>
+	<script src="processing-1.4.8.min.txt"></script> 
+	<script src="main.txt"></script> 
+	<script type="application/javascript">
+		//get the canvas that Processing-js will use
+		var canvas = document.getElementById("canvas"); 
+		//pass the function sketchProc (defined in myCode.js) to Processing's constructor.
+		var processingInstance = new Processing(canvas, sketchProc); 
+	</script>
+</body>
+</html>
